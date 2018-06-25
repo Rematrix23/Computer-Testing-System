@@ -1,0 +1,264 @@
+//1 Для кнопки «Открыть» используется программный код:
+procedure TForm1.MenuItem2Click(Sender: TObject);
+var
+  Node : TTreeNode;
+  temp,boxparam,n,i,allq,mark: integer;
+  s: string;
+//  testtime: shortstring;
+begin
+  if Form1.openDialog1.Execute
+   then
+   begin
+   MyRemoveDir('temp');
+   s:=Form1.openDialog1.FileName;
+   copyfile(PChar(s),'temp\temp.ini',False);
+   end;
+   if not (button4.Enabled) then button4.Enabled:=true;
+   allq:=0;
+   alltime:=0;
+   mark:=0;
+   TreeView1.Items.Clear;
+   tempF:=TIniFile.Create('temp\temp.ini');
+   allq:=tempF.Readinteger('settings','all',allq);
+   mark:=tempF.Readinteger('settings','mark',mark);
+   SetLength(answers,allq);
+   for i:=1 to allq do answers[i]:=2;
+   label2.Caption:=Utf8ToAnsi(tempF.ReadString('settings','name',label2.Caption));
+   alltime:=tempF.Readinteger('settings','testtime',alltime);
+   tempF.Free;
+   if alltime=0 then Label3.Caption:='Не ограничено' else begin Label3.Caption:=inttostr(alltime); alltime:=alltime*60; end;
+   TreeView1.Items.BeginUpdate;
+  try
+   for i:=1 to allq do
+   begin
+    TreeView1.Items.Add(nil,'Вопрос '+IntToStr(i));
+    TreeView1.Items[i-1].ImageIndex:=0;
+    TreeView1.Items[i-1].SelectedIndex:=0;
+   end;
+  finally
+  TreeView1.Items.EndUpdate;
+  end;
+end;
+//2. Кнопка «Закрыть» содержит следующий программный код:
+procedure TForm1.MenuItem3Click(Sender: TObject);
+begin
+   close;
+end;
+//3. Закрытие приложения действует по следующему программному коду:
+procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+begin
+  MyRemoveDir('temp');
+end;
+//4. Работа компонента таймер обеспечивается программным кодом:
+procedure TForm1.Timer1Timer(Sender: TObject);
+var
+min,sec: integer;
+begin
+  timer1.Tag:=timer1.Tag+1;
+  min:=(alltime-timer1.Tag) div 60;
+  sec:=(alltime-timer1.Tag) mod 60;
+  if sec>9 then Label3.Caption:=inttostr(min)+':'+inttostr(sec) else Label3.Caption:=inttostr(min)+':0'+inttostr(sec);
+  if timer1.Tag=alltime then begin Timer1.Enabled:=False; Timer1.Tag:=0; Button1Click(Sender); end;
+end;
+//5. Для кнопки «Завершить тестирование» используется программный код:
+procedure TForm1.Button1Click(Sender: TObject);
+var
+  Count,pos,neg,allq,mark,a,i: integer;
+  perc: real;
+  gotmark: string;
+begin
+ Button4.Enabled:=False;
+ Form2.Visible:=True;
+ Timer1.Enabled:=False;
+ pos:=0;
+ neg:=0;
+ gotmark:='2';
+ mark:=0;
+ tempF:=TIniFile.Create('temp\temp.ini');
+ allq:=tempF.Readinteger('settings','all',allq);
+ mark:=tempF.Readinteger('settings','mark',mark);
+ for Count:=1 to Length(answers) do if answers[Count]=1 then pos:=pos+1 else neg:=neg+1;
+  Form2.Slices:=TPieSeries.Create(Form2.Chart1);
+  Form2.Chart1.ClearChart;
+  Form2.Chart1.Title.Text.Add('Правильные ответы');
+  Form2.Chart1.Title.Font.Size := 11;
+  Form2.Chart1.Title.Visible := true;
+  Form2.Slices.AddPie(pos, 'Правильно', clGreen);
+  Form2.Slices.AddPie(neg, 'Не правильно', clRed);
+  Form2.Chart1.AddSeries(Form2.Slices);
+  Form2.Chart1.AxisVisible := false;
+
+  if pos=0 then perc:=0.0 else perc:=(pos/allq)*100;
+  if mark=1 then
+  begin
+  for i:=2 to 4 do
+  begin
+  a:=tempF.Readinteger('settings','mark'+inttostr(i),a);
+  if pos>a then gotmark:=inttostr(i+1);
+  end;
+  end;
+  if mark=0 then Form2.Label1.Caption:='Верных ответов: '+inttostr(pos)+' из '+inttostr(allq)+' ('+floattostrF(perc,ffFixed,3,2)+'%)' else
+  Form2.Label1.Caption:='Верных ответов: '+inttostr(pos)+' из '+inttostr(allq)+' ('+floattostrF(perc,ffFixed,3,2)+'%)'+' оценка '+gotmark;
+end;
+//6. При выборе вопроса используется программный код:
+procedure TForm1.TreeView1SelectionChanged(Sender: TObject);
+var tempstr: string;
+  num: integer;
+  i,qoption: integer;
+  answer: shortstring;
+begin
+  if alltime>0 then Timer1.Enabled:=True;
+  if not (button4.Enabled) then begin Timer1.Enabled:=False; Timer1.Tag:=0; end;
+  Edit1.text:='';
+if not(answers[TreeView1.Selected.Index+1]=2)
+    then
+        begin
+        LoadQ();
+        tempF1:=TIniFile.Create('temp\tempansw.ini');
+        qoption:=tempF1.ReadInteger('q'+inttostr(TreeView1.Selected.Index+1),'qoption',qoption);
+        //Открытый
+        if qoption=0 then
+        begin
+        Edit1.text:=tempF1.ReadString('q'+inttostr(TreeView1.Selected.Index+1),'answer',Edit1.text);
+        end;
+        //закрытый
+        if qoption=1 then
+        RadioGroup1.ItemIndex:=tempF1.ReadInteger('q'+inttostr(TreeView1.Selected.Index+1),'answer',RadioGroup1.ItemIndex);
+        //с множественным выбором
+        if qoption=2 then
+        begin
+                answer:=tempF1.ReadString('q'+inttostr(TreeView1.Selected.Index+1),'answer',answer);
+            for i:=1 to Length(answer) do
+            begin
+            CheckGroup1.Checked[strtoint(answer[i])]:=True;
+            end;
+        end;
+        Memo2.Lines.Add('Checked');
+        TempF1.Free;
+        end
+    else
+        begin
+         LoadQ();
+        end;
+end;
+//7. Кнопка «Ответ» использует программный код:
+procedure TForm1.Button4Click(Sender: TObject);
+var
+  allq,qoption,i: integer;
+  str,tempstr:string;
+  begin
+
+    TreeView1.Items.Item[TreeView1.Selected.Index].ImageIndex:=1;
+    TreeView1.Items.Item[TreeView1.Selected.Index].SelectedIndex:=1;
+   TreeView1.Repaint;
+  tempF:=TIniFile.Create('temp\temp.ini');
+  allq:=tempF.Readinteger('settings','all',allq);
+  qoption:=tempF.ReadInteger('q'+inttostr(TreeView1.Selected.Index+1),'qoption',qoption);
+   if qoption=0 then begin tempstr:=Edit1.Text; answers[TreeView1.Selected.Index+1]:=CheckAnswer(inttostr(TreeView1.Selected.Index+1),LowerCase(tempstr)) end;
+   if qoption=1 then answers[TreeView1.Selected.Index+1]:=CheckAnswer(inttostr(TreeView1.Selected.Index+1),inttostr(RadioGroup1.ItemIndex));
+   if qoption=2 then
+   begin
+   str:='';
+   for i:=0 to CheckGroup1.Items.Count-1 do
+   if CheckGroup1.Checked[i] then str:=str+inttostr(i);
+   answers[TreeView1.Selected.Index+1]:=CheckAnswer(inttostr(TreeView1.Selected.Index+1),str);
+   end;
+   memo2.Clear;
+   Edit2.Clear;
+   for i:=1 to allq do edit2.text:=edit2.text+inttostr(answers[i]);
+   //tempF.Free;
+   tempF1:=TIniFile.Create('temp\tempansw.ini');
+  //открытый
+  if qoption=0 then
+  begin
+  tempstr:=Edit1.text;
+  tempF1.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',LowerCase(tempstr));
+  tempF1.WriteInteger('q'+inttostr(TreeView1.Selected.Index+1),'qoption',qoption);
+  end;
+  //закрытый
+  if qoption=1 then
+  tempF1.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',inttostr(RadioGroup1.ItemIndex));
+  tempF1.WriteInteger('q'+inttostr(TreeView1.Selected.Index+1),'qoption',qoption);
+  //с множественным выбором
+  if qoption=2 then
+  begin
+  tempstr:='';
+  tempF1.WriteInteger('q'+inttostr(TreeView1.Selected.Index+1),'qoption',qoption);
+  for i:=0 to CheckGroup1.Items.Count-1 do
+  if CheckGroup1.Checked[i] then tempstr:=tempstr+inttostr(i);
+  tempF1.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',tempstr);
+  tempstr:='';
+  end;
+  //закрытие файла
+  tempF1.Free;
+end;
+//8. Функция проверки правильного ответа обеспечивается программным кодом:
+function CheckAnswer(qnum,answer: string) : shortint;
+var
+  Ranswer: string;
+begin
+  tempF:=TIniFile.Create('temp\temp.ini');
+  Ranswer:=tempF.ReadString('q'+inttostr(Form1.TreeView1.Selected.Index+1),'answer',Ranswer);
+  if answer=Ranswer then Result:=1 else Result:=0;
+  tempF.Free;
+end;
+//9. Процедура загрузки вопроса использует программный код:
+procedure LoadQ();
+var str,str1: string;
+  num: integer;
+  i,j,qoption: integer;
+  answer: shortstring;
+begin
+  tempF:=TIniFile.Create('temp\temp.ini');
+   try
+     Form1.Memo1.Clear;
+     str:=tempF.ReadString('q'+inttostr(Form1.TreeView1.Selected.Index+1),'text',str);
+     Form1.Memo1.Lines.add(Utf8ToAnsi(str));
+     qoption:=tempF.ReadInteger('q'+inttostr(Form1.TreeView1.Selected.Index+1),'qoption',qoption);
+     if qoption=0 then
+         begin
+         //открытый
+         Form1.edit1.Visible:=True;
+         //Edit1.Caption:=tempF.ReadString('q'+inttostr(Form1.ListBox1.ItemIndex+1),'answer',Form1.Edit1.Caption);
+         //Закрытый
+         Form1.RadioGroup1.Visible:=False;
+         //множественный выбор
+         Form1.CheckGroup1.Visible:=False;
+         end;
+    if qoption=1 then
+         begin
+         //открытый
+         Form1.edit1.Visible:=False;
+         //Закрытый
+         Form1.RadioGroup1.Visible:=True;
+    Form1.RadioGroup1.Items.Clear;
+    num:=tempF.Readinteger('q'+inttostr(Form1.TreeView1.Selected.Index+1),'answernum',num);
+    for i:=0 to num-1 do
+    begin
+    str:=tempF.ReadString('q'+inttostr(Form1.TreeView1.Selected.Index+1),'answerop'+inttostr(i),str);
+    Form1.RadioGroup1.Items.add(Utf8ToAnsi(str));
+    end;
+         //множественный выбор
+         Form1.CheckGroup1.Visible:=False;
+         end;
+    if qoption=2 then
+         begin
+         //открытый
+         Form1.edit1.Visible:=False;
+         //Закрытый
+         Form1.RadioGroup1.Visible:=False;
+         //множественный выбор
+         Form1.CheckGroup1.Visible:=True;
+         num:=tempF.Readinteger('q'+inttostr(Form1.TreeView1.Selected.Index+1),'answernum',num);
+         Form1.CheckGroup1.Items.Clear;
+    for i:=0 to num-1 do
+    begin
+    str:=tempF.ReadString('q'+inttostr(Form1.TreeView1.Selected.Index+1),'answerop'+inttostr(i),str);
+    Form1.CheckGroup1.Items.add(Utf8ToAnsi(str));
+ end;
+ end;
+finally
+    tempF.Free;
+    end;
+end;
+

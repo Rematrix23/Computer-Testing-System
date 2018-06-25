@@ -1,0 +1,218 @@
+//1. Для кнопки "сохранить вопрос" прописывается программный код:
+Testnotsave:=True;
+tempF:=TIniFile.Create('temp\temp.ini');
+tempF.WriteString('settings','name',Edit5.Text);
+tempF.WriteInteger('settings','all',TreeView1.Items.Count);
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'text',Memo1.Lines.Text);
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'qoption',inttostr(Combobox1.ItemIndex));
+//открытый
+if Combobox1.ItemIndex=0 then
+begin
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',Edit1.Caption);
+end;
+//закрытый
+if Combobox1.ItemIndex=1 then
+begin	tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',inttostr(RadioGroup1.ItemIndex));
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answernum',inttostr(RadioGroup1.Items.Count));
+fori:=0 to RadioGroup1.Items.Count-1 do
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answerop'+inttostr(i),RadioGroup1.Items[i]);
+end;
+//с множественным выбором
+if Combobox1.ItemIndex=2 then
+begin
+tempstr:='';
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answernum',inttostr(CheckGroup1.Items.Count));
+fori:=0 to CheckGroup1.Items.Count-1 do
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answerop'+inttostr(i),CheckGroup1.Items[i]);
+fori:=0 to CheckGroup1.Items.Count-1 do
+if CheckGroup1.Checked[i] then tempstr:=tempstr+inttostr(i);
+tempF.WriteString('q'+inttostr(TreeView1.Selected.Index+1),'answer',tempstr);
+tempstr:='';
+end;
+//закрытие файла
+tempF.Free;
+end;
+//2. Для кнопки "добавить ответ" прописывается программный код:
+procedure TForm1.Button5Click(Sender: TObject);
+begin
+ RadioGroup1.Items.Clear;
+RadioGroup1.Items.AddStrings(Memo2.Lines);
+end;
+
+procedure TForm1.Button6Click(Sender: TObject);
+begin
+ Checkgroup1.Items.Clear;
+Checkgroup1.Items.AddStrings(Memo2.Lines);
+end;
+//3. При выборе вопроса в списке выполняется следующий программный код:
+num:=0;
+tempF:=TIniFile.Create('temp\temp.ini');
+try
+   Memo1.Clear;
+str:=tempF.ReadString('q'+inttostr(ListBox1.ItemIndex+1),'text',str);
+Memo1.Lines.add(str);
+Combobox1.ItemIndex:=tempF.ReadInteger('q'+inttostr(ListBox1.ItemIndex+1),'qoption',Combobox1.ItemIndex);
+if Combobox1.ItemIndex=0 then
+begin
+       //открытый
+       edit1.Visible:=True;
+       Edit1.Caption:=tempF.ReadString('q'+inttostr(ListBox1.ItemIndex+1),'answer',Edit1.Caption);
+       //Закрытый
+       RadioGroup1.Visible:=False;
+       Edit2.Visible:=False;
+       Button5.Visible:=False;
+    //множественныйвыбор
+       CheckGroup1.Visible:=False;
+       Edit3.Visible:=False;
+       Button6.Visible:=False;
+//Редактор множественный/Закрытый выбор
+Memo2.Visible:=False;
+end;
+if Combobox1.ItemIndex=1 then
+begin
+       //открытый
+       edit1.Visible:=False;
+       //Закрытый
+       RadioGroup1.Visible:=True;
+       //Edit2.Visible:=True;
+       Button5.Visible:=True;
+  RadioGroup1.Items.Clear;
+num:=tempF.Readinteger('q'+inttostr(ListBox1.ItemIndex+1),'answernum',num);
+  Memo2.Lines.Clear;
+fori:=0 to num-1 do
+begin
+str:=tempF.ReadString('q'+inttostr(ListBox1.ItemIndex+1),'answerop'+inttostr(i),str);
+RadioGroup1.Items.add(str);
+Memo2.Lines.Add(str);
+end;
+  RadioGroup1.ItemIndex:=tempF.ReadInteger('q'+inttostr(ListBox1.ItemIndex+1),'answer',RadioGroup1.ItemIndex);
+//множественный выбор
+CheckGroup1.Visible:=False;
+Edit3.Visible:=False;
+       Button6.Visible:=False;
+//Редактор множественный/Закрытый выбор
+Memo2.Visible:=True;
+end;
+if Combobox1.ItemIndex=2 then
+begin
+       //открытый
+       edit1.Visible:=False;
+       //Закрытый
+       RadioGroup1.Visible:=False;
+       Edit2.Visible:=False;
+       Button5.Visible:=False;
+       //множественныйвыбор
+       CheckGroup1.Visible:=True;
+       Button6.Visible:=True;
+num:=tempF.Readinteger('q'+inttostr(ListBox1.ItemIndex+1),'answernum',num);
+       Memo2.Lines.Clear;
+       CheckGroup1.Items.Clear;
+fori:=0 to num-1 do
+begin
+str:=tempF.ReadString('q'+inttostr(ListBox1.ItemIndex+1),'answerop'+inttostr(i),str);
+CheckGroup1.Items.add(str);
+Memo2.Lines.Add(str);
+answer:=tempF.ReadString('q'+inttostr(ListBox1.ItemIndex+1),'answer',answer);
+end;
+fori:=1 to Length(answer) do
+begin
+CheckGroup1.Checked[strtoint(answer[i])]:=True;
+end;
+       //Редактор множественный/Закрытый выбор
+Memo2.Visible:=True;
+end;
+finally
+tempF.Free;
+end;
+end;
+
+//4. В настройках для  кнопки «Сохранить» используется программный код:
+if checkbox1.Checked then
+      begin
+      tempF:=TIniFile.Create('temp\temp.ini');
+      tempF.WriteString('settings','mark','1');
+      tempF.WriteString('settings','mark2',LabeledEdit4.Text);
+      tempF.WriteString('settings','mark3',LabeledEdit3.Text);
+      tempF.WriteString('settings','mark4',LabeledEdit2.Text);
+      tempF.WriteString('settings','mark5',LabeledEdit1.Text);
+      tempF.Free;
+      end
+  else
+      begin
+      tempF:=TIniFile.Create('temp\temp.ini');
+      tempF.WriteString('settings','mark','0');
+      tempF.DeleteKey('settings','mark2');
+      tempF.DeleteKey('settings','mark3');
+      tempF.DeleteKey('settings','mark4');
+      tempF.DeleteKey('settings','mark5');
+      tempF.Free;
+      end;
+  Form2.Visible:=False;
+При смене значения в текстовом поле 
+procedure TForm2.LabeledEdit1Change(Sender: TObject);
+var
+  allq, mark: integer;
+begin
+  allq:=0;
+  tempF:=TIniFile.Create('temp\temp.ini');
+  allq:=tempF.Readinteger('settings','all',allq);
+  tempF.Free;
+  if allq=0 then begin showmessage('Заполните тест'); LabeledEdit1.Text:='0'; end else
+  begin
+  mark:=strtoint(LabeledEdit1.Text);
+  if mark>allq then begin showmessage('Число не должно быть больще количества вопросов'); LabeledEdit1.Text:='0'; end;
+  end;
+end;
+procedure TForm2.LabeledEdit2Change(Sender: TObject);
+var
+  allq, mark: integer;
+begin
+  allq:=0;
+  tempF:=TIniFile.Create('temp\temp.ini');
+  allq:=tempF.Readinteger('settings','all',allq);
+  tempF.Free;
+  if allq=0 then begin showmessage('Заполните тест'); LabeledEdit2.Text:='0'; end else
+  begin
+  mark:=strtoint(LabeledEdit2.Text);
+  if mark>allq then begin showmessage('Число не должно быть больше количества вопросов'); LabeledEdit2.Text:='0'; end;
+  end;
+end;
+procedure TForm2.LabeledEdit3Change(Sender: TObject);
+var
+  allq, mark: integer;
+begin
+  allq:=0;
+  tempF:=TIniFile.Create('temp\temp.ini');
+  allq:=tempF.Readinteger('settings','all',allq);
+  tempF.Free;
+  if allq=0 then begin showmessage('Заполните тест'); LabeledEdit3.Text:='0'; end else
+  begin
+  mark:=strtoint(LabeledEdit3.Text);
+  if mark>allq then begin showmessage('Число не должно быть больше количества вопросов'); LabeledEdit3.Text:='0'; end;
+  end;
+end;
+procedure TForm2.LabeledEdit4Change(Sender: TObject);
+var
+  allq, mark: integer;
+begin
+  allq:=0;
+  tempF:=TIniFile.Create('temp\temp.ini');
+  allq:=tempF.Readinteger('settings','all',allq);
+  tempF.Free;
+  if allq=0 then begin showmessage('Заполните тест'); LabeledEdit4.Text:='0'; end else
+  begin
+  mark:=strtoint(LabeledEdit4.Text);
+  if mark>allq then begin showmessage('Число не должно быть больше количества вопросов'); LabeledEdit4.Text:='0'; end;
+  end;
+end;
+//5. При закрытии приложения используется программный код:
+procedure TForm1.FormClose(Sender: TObject; var CloseAction: TCloseAction);
+var
+    temp,boxparam: integer;
+begin
+ if testnotsave then
+ begin
+ boxparam:=MB_YESNO+MB_ICONWARNING;
+  temp:=Application.MessageBox('Файл не был сохранен! Вы хотите сохранить файл?','Внимание',boxparam);
+  if temp = IDYES then MenuItem2Click(Sender) else begin MyRemoveDir('temp'); end;
+  end;
